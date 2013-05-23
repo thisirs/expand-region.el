@@ -51,10 +51,19 @@ Skips past [] and {} arguments to the environment."
     (skip-syntax-backward " ")
     (exchange-point-and-mark)))
 
+(defun er/mark-LaTeX-environment ()
+  (if (not (looking-at "\\\\begin{"))
+      (LaTeX-mark-environment)
+    (set-mark (point))
+    (forward-char)
+    (LaTeX-find-matching-end)
+    (exchange-point-and-mark)))
+
 (defun er/mark-LaTeX-math ()
   "Mark current math environment."
   (interactive)
-  (when (texmathp)
+  (cond
+   ((texmathp)
     (let* ((string (car texmathp-why))
            (pos (cdr texmathp-why))
            (reason (assoc string texmathp-tex-commands1))
@@ -76,15 +85,21 @@ Skips past [] and {} arguments to the environment."
         (re-search-forward texmathp-onoff-regexp)
         (set-mark pos)
         (exchange-point-and-mark))
-       (t (error (format "Unknown reason to be in math mode: %s" type)))))))
+       (t (error (format "Unknown reason to be in math mode: %s" type))))))
+   ((looking-at "\\$")
+    (forward-char)
+    (er/mark-LaTeX-math))
+   ((looking-back "\\$")
+    (backward-sexp)
+    (er/mark-LaTeX-math))))
 
 (defun er/add-latex-mode-expansions ()
   "Adds expansions for buffers in latex-mode"
   (set (make-local-variable 'er/try-expand-list)
        (append
         er/try-expand-list
-        '(LaTeX-mark-environment
-          LaTeX-mark-section
+        '(er/mark-LaTeX-environment
+          ;;LaTeX-mark-section
           er/mark-LaTeX-inside-environment
           er/mark-LaTeX-math))))
 
